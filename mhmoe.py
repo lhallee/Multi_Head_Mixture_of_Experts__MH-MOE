@@ -5,23 +5,21 @@ import torch.nn.functional as F
 
 class Expert(nn.Module):
     """
-    Mixtral-like MLP
+    SwiGLU MLP
     """
     def __init__(self, config):
         super().__init__()
-        self.intermediate_up = nn.Linear(config.hidden_size, config.intermediate_size)
-        self.intermediate_down = nn.Linear(config.intermediate_size, config.hidden_size)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-
-        self.new_linear = nn.Linear(config.hidden_size, config.intermediate_size, bias=True)
-
+        self.w1 = nn.Linear(config.hidden_size, config.intermediate_size)
+        self.w2 = nn.Linear(config.hidden_size, config.intermediate_size)
+        self.w3 = nn.Linear(config.intermediate_size, config.hidden_size)
+        self.layer_norm = nn.LayerNorm(config.hidden_size)
         # uncomment for it to initially be equivalent to two layer mlp
-        # self.new_linear.weight.data.zero_()
-        # self.new_linear.bias.data.fill_(1.0)
+        # self.w2.weight.data.zero_()
+        # self.w2.bias.data.fill_(1.0)
     
     def forward(self, hidden_states):
-        hidden_states = F.silu(self.intermediate_up(hidden_states)) * self.new_linear(hidden_states)
-        hidden_states = self.dropout(self.intermediate_down(hidden_states))
+        hidden_states = F.silu(self.w1(hidden_states)) * self.w2(hidden_states)
+        hidden_states = self.layer_norm(self.w3(hidden_states))
         return hidden_states
 
 
